@@ -8,7 +8,8 @@
 import Combine
 import SwiftUI
 
-struct ClaudeCrabIcon: View {
+struct AgentIcon: View {
+    let provider: AgentProvider
     let size: CGFloat
     let color: Color
     var animateLegs: Bool = false
@@ -18,13 +19,24 @@ struct ClaudeCrabIcon: View {
     // Timer for leg animation
     private let legTimer = Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()
 
-    init(size: CGFloat = 16, color: Color = Color(red: 0.85, green: 0.47, blue: 0.34), animateLegs: Bool = false) {
+    init(provider: AgentProvider = .claude, size: CGFloat = 16, color: Color? = nil, animateLegs: Bool = false) {
+        self.provider = provider
         self.size = size
-        self.color = color
+        self.color = color ?? provider.brandColor
         self.animateLegs = animateLegs
     }
 
     var body: some View {
+        Group {
+            if provider == .gemini {
+                GeminiIcon(size: size, color: color)
+            } else {
+                crabIcon
+            }
+        }
+    }
+
+    private var crabIcon: some View {
         Canvas { context, canvasSize in
             let scale = size / 52.0  // Original viewBox height is 52
             let xOffset = (canvasSize.width - 66 * scale) / 2

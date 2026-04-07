@@ -18,6 +18,7 @@ struct HookEvent: Codable, Sendable {
     let cwd: String
     let event: String
     let status: String
+    let provider: AgentProvider?
     let pid: Int?
     let tty: String?
     let tool: String?
@@ -28,7 +29,7 @@ struct HookEvent: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case sessionId = "session_id"
-        case cwd, event, status, pid, tty, tool
+        case cwd, event, status, provider, pid, tty, tool
         case toolInput = "tool_input"
         case toolUseId = "tool_use_id"
         case notificationType = "notification_type"
@@ -36,11 +37,12 @@ struct HookEvent: Codable, Sendable {
     }
 
     /// Create a copy with updated toolUseId
-    init(sessionId: String, cwd: String, event: String, status: String, pid: Int?, tty: String?, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?) {
+    init(sessionId: String, cwd: String, event: String, status: String, provider: AgentProvider? = nil, pid: Int?, tty: String?, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?) {
         self.sessionId = sessionId
         self.cwd = cwd
         self.event = event
         self.status = status
+        self.provider = provider
         self.pid = pid
         self.tty = tty
         self.tool = tool

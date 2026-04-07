@@ -191,6 +191,8 @@ struct ChatView: View {
                     .foregroundColor(.white.opacity(isHeaderHovered ? 1.0 : 0.6))
                     .frame(width: 24, height: 24)
 
+                ProviderIcon(provider: session.provider, size: 12)
+
                 Text(session.displayTitle)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white.opacity(isHeaderHovered ? 1.0 : 0.85))
@@ -282,7 +284,7 @@ struct ChatView: View {
 
                     // Processing indicator at bottom (first due to flip)
                     if isProcessing {
-                        ProcessingIndicatorView(turnId: lastUserMessageId)
+                        ProcessingIndicatorView(turnId: lastUserMessageId, color: session.provider.brandColor)
                             .padding(.horizontal, 16)
                             .scaleEffect(x: 1, y: -1)
                             .transition(.asymmetric(
@@ -333,7 +335,7 @@ struct ChatView: View {
             // New messages indicator overlay
             .overlay(alignment: .bottom) {
                 if isAutoscrollPaused && newMessageCount > 0 {
-                    NewMessagesIndicator(count: newMessageCount) {
+                    NewMessagesIndicator(count: newMessageCount, color: session.provider.brandColor) {
                         withAnimation(.easeOut(duration: 0.3)) {
                             // In inverted scroll, use .bottom anchor to scroll to the visual bottom
                             proxy.scrollTo("bottom", anchor: .bottom)
@@ -360,7 +362,7 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField(canSendMessages ? "Message Claude..." : "Open Claude Code in tmux to enable messaging", text: $inputText)
+            TextField(canSendMessages ? "Message \(session.provider.displayName)..." : "Open \(session.provider.displayName) in tmux to enable messaging", text: $inputText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
                 .foregroundColor(canSendMessages ? .white : .white.opacity(0.4))
@@ -584,17 +586,18 @@ struct AssistantMessageView: View {
 
 struct ProcessingIndicatorView: View {
     private let baseTexts = ["Processing", "Working"]
-    private let color = Color(red: 0.85, green: 0.47, blue: 0.34) // Claude orange
+    private let color: Color
     private let baseText: String
 
     @State private var dotCount: Int = 1
     private let timer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
 
     /// Use a turnId to select text consistently per user turn
-    init(turnId: String = "") {
+    init(turnId: String = "", color: Color = TerminalColors.amber) {
         // Use hash of turnId to pick base text consistently for this turn
         let index = abs(turnId.hashValue) % baseTexts.count
         baseText = baseTexts[index]
+        self.color = color
     }
 
     private var dots: String {
@@ -1130,6 +1133,7 @@ struct ChatApprovalBar: View {
 /// Floating indicator showing count of new messages when user has scrolled up
 struct NewMessagesIndicator: View {
     let count: Int
+    let color: Color
     let onTap: () -> Void
 
     @State private var isHovering: Bool = false
@@ -1148,7 +1152,7 @@ struct NewMessagesIndicator: View {
             .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(Color(red: 0.85, green: 0.47, blue: 0.34)) // Claude orange
+                    .fill(color)
                     .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
             )
             .scaleEffect(isHovering ? 1.05 : 1.0)

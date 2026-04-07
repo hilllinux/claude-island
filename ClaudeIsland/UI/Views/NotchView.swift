@@ -34,6 +34,11 @@ struct NotchView: View {
         sessionMonitor.instances.contains { $0.phase == .processing || $0.phase == .compacting }
     }
 
+    /// The provider that is currently active (if any)
+    private var activeProvider: AgentProvider? {
+        sessionMonitor.instances.first { $0.phase == .processing || $0.phase == .compacting || $0.phase.isWaitingForApproval }?.provider
+    }
+
     /// Whether any Claude session has a pending permission request
     private var hasPendingPermission: Bool {
         sessionMonitor.instances.contains { $0.phase.isWaitingForApproval }
@@ -210,7 +215,8 @@ struct NotchView: View {
     // MARK: - Notch Layout
 
     private var isProcessing: Bool {
-        activityCoordinator.expandingActivity.show && activityCoordinator.expandingActivity.type == .claude
+        activityCoordinator.expandingActivity.show && 
+        (activityCoordinator.expandingActivity.type == .claude)
     }
 
     /// Whether to show the expanded closed state (processing, pending permission, or waiting for input)
@@ -246,15 +252,15 @@ struct NotchView: View {
     @ViewBuilder
     private var headerRow: some View {
         HStack(spacing: 0) {
-            // Left side - crab + optional permission indicator (visible when processing, pending, or waiting for input)
+            // Left side - icon + optional permission indicator (visible when processing, pending, or waiting for input)
             if showClosedActivity {
                 HStack(spacing: 4) {
-                    ClaudeCrabIcon(size: 14, animateLegs: isProcessing)
-                        .matchedGeometryEffect(id: "crab", in: activityNamespace, isSource: showClosedActivity)
+                    AgentIcon(provider: activeProvider ?? .claude, size: 14, animateLegs: isProcessing)
+                        .matchedGeometryEffect(id: "agent-icon", in: activityNamespace, isSource: showClosedActivity)
 
                     // Permission indicator only (amber) - waiting for input shows checkmark on right
                     if hasPendingPermission {
-                        PermissionIndicatorIcon(size: 14, color: Color(red: 0.85, green: 0.47, blue: 0.34))
+                        PermissionIndicatorIcon(size: 14, color: (activeProvider ?? .claude).brandColor)
                             .matchedGeometryEffect(id: "status-indicator", in: activityNamespace, isSource: showClosedActivity)
                     }
                 }
@@ -304,11 +310,10 @@ struct NotchView: View {
     @ViewBuilder
     private var openedHeaderContent: some View {
         HStack(spacing: 12) {
-            // Show static crab only if not showing activity in headerRow
-            // (headerRow handles crab + indicator when showClosedActivity is true)
+            // Show static icon only if not showing activity in headerRow
             if !showClosedActivity {
-                ClaudeCrabIcon(size: 14)
-                    .matchedGeometryEffect(id: "crab", in: activityNamespace, isSource: !showClosedActivity)
+                AgentIcon(provider: activeProvider ?? .claude, size: 14)
+                    .matchedGeometryEffect(id: "agent-icon", in: activityNamespace, isSource: !showClosedActivity)
                     .padding(.leading, 8)
             }
 
@@ -350,7 +355,7 @@ struct NotchView: View {
         Group {
             switch viewModel.contentType {
             case .instances:
-                ClaudeInstancesView(
+                AgentInstancesView(
                     sessionMonitor: sessionMonitor,
                     viewModel: viewModel
                 )

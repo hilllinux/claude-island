@@ -215,6 +215,65 @@ struct IdleIcon: View {
     }
 }
 
+// MARK: - Gemini Icon (four-pointed star)
+struct GeminiIcon: View {
+    let size: CGFloat
+    let color: Color
+
+    init(size: CGFloat = 12, color: Color = TerminalColors.blue) {
+        self.size = size
+        self.color = color
+    }
+
+    var body: some View {
+        Canvas { context, canvasSize in
+            let scale = size / 30.0
+            let dotSize = 4 * scale
+
+            // Star shape
+            let dots: [(CGFloat, CGFloat)] = [
+                (15, 3), (15, 7), (15, 23), (15, 27),
+                (3, 15), (7, 15), (23, 15), (27, 15),
+                (11, 11), (19, 11), (11, 19), (19, 19),
+                (15, 15)
+            ]
+
+            for (x, y) in dots {
+                let rect = CGRect(
+                    x: x * scale - dotSize/2,
+                    y: y * scale - dotSize/2,
+                    width: dotSize,
+                    height: dotSize
+                )
+                context.fill(Path(rect), with: .color(color))
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - Provider Icon
+struct ProviderIcon: View {
+    let provider: AgentProvider
+    let size: CGFloat
+
+    var body: some View {
+        switch provider {
+        case .claude:
+            // For now, use a simplified pixel shape for Claude or just a circle
+            Circle()
+                .fill(TerminalColors.amber)
+                .frame(width: size * 0.6, height: size * 0.6)
+        case .gemini:
+            GeminiIcon(size: size)
+        case .custom:
+            Image(systemName: "cpu")
+                .font(.system(size: size * 0.8))
+                .foregroundColor(TerminalColors.cyan)
+        }
+    }
+}
+
 // MARK: - Status Icon View (unified)
 struct StatusIcon: View {
     let phase: SessionPhase
