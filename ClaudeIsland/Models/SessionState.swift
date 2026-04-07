@@ -294,6 +294,15 @@ enum ToolInProgressPhase: Equatable, Sendable {
     case starting
     case running
     case pendingApproval
+
+    nonisolated static func == (lhs: ToolInProgressPhase, rhs: ToolInProgressPhase) -> Bool {
+        switch (lhs, rhs) {
+        case (.starting, .starting): return true
+        case (.running, .running): return true
+        case (.pendingApproval, .pendingApproval): return true
+        default: return false
+        }
+    }
 }
 
 // MARK: - Subagent State

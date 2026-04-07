@@ -47,14 +47,15 @@ protocol ProcessExecuting: Sendable {
 }
 
 /// Default implementation using Foundation.Process
-actor ProcessExecutor: ProcessExecuting {
+/// Using final class with Sendable for thread-safe concurrent access
+final class ProcessExecutor: ProcessExecuting, Sendable {
     /// Shared instance
-    static let shared = ProcessExecutor()
+    nonisolated static let shared = ProcessExecutor()
 
-    /// Logger for process execution (nonisolated static for cross-context access)
+    /// Logger for process execution
     nonisolated static let logger = Logger(subsystem: "com.claudeisland", category: "ProcessExecutor")
 
-    nonisolated private init() {}
+    private init() {}
 
     /// Run a command asynchronously and return output (throws on failure)
     func run(_ executable: String, arguments: [String]) async throws -> String {
@@ -69,7 +70,7 @@ actor ProcessExecutor: ProcessExecuting {
 
     /// Run a command asynchronously and return a full Result with exit code and stderr
     func runWithResult(_ executable: String, arguments: [String]) async -> Result<ProcessResult, ProcessExecutorError> {
-        await withCheckedContinuation { continuation in
+        return await Task.detached {
             let process = Process()
             let stdoutPipe = Pipe()
             let stderrPipe = Pipe()
@@ -83,8 +84,8 @@ actor ProcessExecutor: ProcessExecuting {
                 try process.run()
                 process.waitUntilExit()
 
-                let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                let stdoutData = try stdoutPipe.fileHandleForReading.readToEnd() ?? Data()
+                let stderrData = try stderrPipe.fileHandleForReading.readToEnd() ?? Data()
 
                 let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
                 let stderr = String(data: stderrData, encoding: .utf8)
@@ -96,32 +97,31 @@ actor ProcessExecutor: ProcessExecuting {
                 )
 
                 if process.terminationStatus == 0 {
-                    continuation.resume(returning: .success(result))
+                    return .success(result)
                 } else {
                     Self.logger.warning("Command failed: \(executable) \(arguments.joined(separator: " "), privacy: .public) - exit code \(process.terminationStatus)")
-                    continuation.resume(returning: .failure(.executionFailed(
+                    return .failure(.executionFailed(
                         command: executable,
                         exitCode: process.terminationStatus,
                         stderr: stderr
-                    )))
+                    ))
                 }
             } catch let error as NSError {
                 if error.domain == NSCocoaErrorDomain && error.code == NSFileNoSuchFileError {
                     Self.logger.error("Command not found: \(executable, privacy: .public)")
-                    continuation.resume(returning: .failure(.commandNotFound(executable)))
+                    return .failure(.commandNotFound(executable))
                 } else {
                     Self.logger.error("Failed to launch command: \(executable, privacy: .public) - \(error.localizedDescription, privacy: .public)")
-                    continuation.resume(returning: .failure(.launchFailed(command: executable, underlying: error)))
+                    return .failure(.launchFailed(command: executable, underlying: error))
                 }
             } catch {
                 Self.logger.error("Failed to launch command: \(executable, privacy: .public) - \(error.localizedDescription, privacy: .public)")
-                continuation.resume(returning: .failure(.launchFailed(command: executable, underlying: error)))
+                return .failure(.launchFailed(command: executable, underlying: error))
             }
-        }
+        }.value
     }
 
-    /// Run a command synchronously (for use in nonisolated contexts)
-    /// Returns Result instead of optional for better error handling
+    /// Run a command synchronously
     nonisolated func runSync(_ executable: String, arguments: [String]) -> Result<String, ProcessExecutorError> {
         let process = Process()
         let stdoutPipe = Pipe()
@@ -134,8 +134,8 @@ actor ProcessExecutor: ProcessExecuting {
 
         do {
             try process.run()
-            let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let stdoutData = try stdoutPipe.fileHandleForReading.readToEnd() ?? Data()
+            let stderrData = try stderrPipe.fileHandleForReading.readToEnd() ?? Data()
             process.waitUntilExit()
 
             let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
@@ -170,7 +170,6 @@ actor ProcessExecutor: ProcessExecuting {
 
 extension ProcessExecutor {
     /// Run a command and return output, returning nil only if the command itself fails to execute
-    /// (as opposed to non-zero exit codes which may still have useful output)
     func runOrNil(_ executable: String, arguments: [String]) async -> String? {
         let result = await runWithResult(executable, arguments: arguments)
         switch result {
@@ -181,7 +180,7 @@ extension ProcessExecutor {
         }
     }
 
-    /// Run a command synchronously, returning nil on failure (backwards compatible)
+    /// Run a command synchronously, returning nil on failure
     nonisolated func runSyncOrNil(_ executable: String, arguments: [String]) -> String? {
         switch runSync(executable, arguments: arguments) {
         case .success(let output):

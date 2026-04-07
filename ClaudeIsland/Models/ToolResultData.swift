@@ -239,10 +239,12 @@ struct MCPResult: Equatable, @unchecked Sendable {
     let toolName: String
     let rawResult: [String: Any]
 
-    static func == (lhs: MCPResult, rhs: MCPResult) -> Bool {
-        lhs.serverName == rhs.serverName &&
-        lhs.toolName == rhs.toolName &&
-        NSDictionary(dictionary: lhs.rawResult).isEqual(to: rhs.rawResult)
+    nonisolated static func == (lhs: MCPResult, rhs: MCPResult) -> Bool {
+        let lRaw = lhs.rawResult
+        let rRaw = rhs.rawResult
+        return lhs.serverName == rhs.serverName &&
+               lhs.toolName == rhs.toolName &&
+               NSDictionary(dictionary: lRaw).isEqual(to: rRaw)
     }
 }
 

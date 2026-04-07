@@ -107,7 +107,7 @@ struct ChatHistoryItem: Identifiable, Equatable, Sendable {
     let type: ChatHistoryItemType
     let timestamp: Date
 
-    static func == (lhs: ChatHistoryItem, rhs: ChatHistoryItem) -> Bool {
+    nonisolated static func == (lhs: ChatHistoryItem, rhs: ChatHistoryItem) -> Bool {
         lhs.id == rhs.id && lhs.type == rhs.type
     }
 }
@@ -118,6 +118,17 @@ enum ChatHistoryItemType: Equatable, Sendable {
     case toolCall(ToolCallItem)
     case thinking(String)
     case interrupted
+
+    nonisolated static func == (lhs: ChatHistoryItemType, rhs: ChatHistoryItemType) -> Bool {
+        switch (lhs, rhs) {
+        case (.user(let a), .user(let b)): return a == b
+        case (.assistant(let a), .assistant(let b)): return a == b
+        case (.toolCall(let a), .toolCall(let b)): return a == b
+        case (.thinking(let a), .thinking(let b)): return a == b
+        case (.interrupted, .interrupted): return true
+        default: return false
+        }
+    }
 }
 
 struct ToolCallItem: Equatable, Sendable {
@@ -170,7 +181,7 @@ struct ToolCallItem: Equatable, Sendable {
     }
 
     // Custom Equatable implementation to handle structuredResult
-    static func == (lhs: ToolCallItem, rhs: ToolCallItem) -> Bool {
+    nonisolated static func == (lhs: ToolCallItem, rhs: ToolCallItem) -> Bool {
         lhs.name == rhs.name &&
         lhs.input == rhs.input &&
         lhs.status == rhs.status &&
@@ -221,6 +232,14 @@ struct SubagentToolCall: Equatable, Identifiable, Sendable {
     let input: [String: String]
     var status: ToolStatus
     let timestamp: Date
+
+    nonisolated static func == (lhs: SubagentToolCall, rhs: SubagentToolCall) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.input == rhs.input &&
+        lhs.status == rhs.status &&
+        lhs.timestamp == rhs.timestamp
+    }
 
     /// Short description for display
     var displayText: String {
