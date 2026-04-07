@@ -186,6 +186,26 @@ struct SessionState: Equatable, Identifiable, Sendable {
     var canInteract: Bool {
         phase.needsAttention
     }
+
+    // MARK: - Equatable
+
+    nonisolated static func == (lhs: SessionState, rhs: SessionState) -> Bool {
+        lhs.sessionId == rhs.sessionId &&
+        lhs.cwd == rhs.cwd &&
+        lhs.projectName == rhs.projectName &&
+        lhs.provider == rhs.provider &&
+        lhs.pid == rhs.pid &&
+        lhs.tty == rhs.tty &&
+        lhs.isInTmux == rhs.isInTmux &&
+        lhs.phase == rhs.phase &&
+        lhs.chatItems == rhs.chatItems &&
+        lhs.toolTracker == rhs.toolTracker &&
+        lhs.subagentState == rhs.subagentState &&
+        lhs.conversationInfo == rhs.conversationInfo &&
+        lhs.needsClearReconciliation == rhs.needsClearReconciliation &&
+        lhs.lastActivity == rhs.lastActivity &&
+        lhs.createdAt == rhs.createdAt
+    }
 }
 
 // MARK: - Tool Tracker
@@ -241,6 +261,15 @@ struct ToolTracker: Equatable, Sendable {
     nonisolated mutating func completeTool(id: String, success: Bool) {
         inProgress.removeValue(forKey: id)
     }
+
+    // MARK: - Equatable
+
+    nonisolated static func == (lhs: ToolTracker, rhs: ToolTracker) -> Bool {
+        lhs.inProgress == rhs.inProgress &&
+        lhs.seenIds == rhs.seenIds &&
+        lhs.lastSyncOffset == rhs.lastSyncOffset &&
+        lhs.lastSyncTime == rhs.lastSyncTime
+    }
 }
 
 /// A tool currently in progress
@@ -249,6 +278,15 @@ struct ToolInProgress: Equatable, Sendable {
     let name: String
     let startTime: Date
     var phase: ToolInProgressPhase
+
+    // MARK: - Equatable
+
+    nonisolated static func == (lhs: ToolInProgress, rhs: ToolInProgress) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.startTime == rhs.startTime &&
+        lhs.phase == rhs.phase
+    }
 }
 
 /// Phase of a tool in progress
@@ -336,6 +374,14 @@ struct SubagentState: Equatable, Sendable {
             }
         }
     }
+
+    // MARK: - Equatable
+
+    nonisolated static func == (lhs: SubagentState, rhs: SubagentState) -> Bool {
+        lhs.activeTasks == rhs.activeTasks &&
+        lhs.taskStack == rhs.taskStack &&
+        lhs.agentDescriptions == rhs.agentDescriptions
+    }
 }
 
 /// Context for an active Task tool
@@ -345,4 +391,14 @@ struct TaskContext: Equatable, Sendable {
     var agentId: String?
     var description: String?
     var subagentTools: [SubagentToolCall]
+
+    // MARK: - Equatable
+
+    nonisolated static func == (lhs: TaskContext, rhs: TaskContext) -> Bool {
+        lhs.taskToolId == rhs.taskToolId &&
+        lhs.startTime == rhs.startTime &&
+        lhs.agentId == rhs.agentId &&
+        lhs.description == rhs.description &&
+        lhs.subagentTools == rhs.subagentTools
+    }
 }

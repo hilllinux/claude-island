@@ -24,9 +24,9 @@ struct ProcessInfo: Sendable {
 
 /// Builds and queries the system process tree
 struct ProcessTreeBuilder: Sendable {
-    nonisolated static let shared = ProcessTreeBuilder()
+    static let shared = ProcessTreeBuilder()
 
-    private nonisolated init() {}
+    private init() {}
 
     /// Build a process tree mapping PID -> ProcessInfo
     nonisolated func buildTree() -> [Int: ProcessInfo] {
