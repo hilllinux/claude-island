@@ -252,6 +252,49 @@ struct GeminiIcon: View {
     }
 }
 
+// MARK: - Qwen Icon (stylized Q)
+struct QwenIcon: View {
+    let size: CGFloat
+    let color: Color
+
+    init(size: CGFloat = 12, color: Color = TerminalColors.purple) {
+        self.size = size
+        self.color = color
+    }
+
+    var body: some View {
+        Canvas { context, canvasSize in
+            let scale = size / 30.0
+            let dotSize = 4 * scale
+
+            // Q-like shape
+            let dots: [(CGFloat, CGFloat)] = [
+                // Top
+                (11, 7), (15, 7), (19, 7),
+                // Sides
+                (7, 11), (23, 11),
+                (7, 15), (23, 15),
+                (7, 19), (23, 19),
+                // Bottom
+                (11, 23), (15, 23), (19, 23),
+                // Tail
+                (23, 23), (27, 27)
+            ]
+
+            for (x, y) in dots {
+                let rect = CGRect(
+                    x: x * scale - dotSize/2,
+                    y: y * scale - dotSize/2,
+                    width: dotSize,
+                    height: dotSize
+                )
+                context.fill(Path(rect), with: .color(color))
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 // MARK: - Provider Icon
 struct ProviderIcon: View {
     let provider: AgentProvider
@@ -266,6 +309,8 @@ struct ProviderIcon: View {
                 .frame(width: size * 0.6, height: size * 0.6)
         case .gemini:
             GeminiIcon(size: size)
+        case .qwen:
+            QwenIcon(size: size)
         case .custom:
             Image(systemName: "cpu")
                 .font(.system(size: size * 0.8))

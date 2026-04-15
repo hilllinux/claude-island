@@ -4,6 +4,7 @@ Claude Island Hook
 - Sends session state to ClaudeIsland.app via Unix socket
 - For PermissionRequest: waits for user decision from the app
 """
+import argparse
 import json
 import os
 import socket
@@ -72,6 +73,10 @@ def send_event(state):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--provider", help="Agent provider (claude, qwen, etc.)")
+    args, unknown = parser.parse_known_args()
+
     try:
         data = json.load(sys.stdin)
     except json.JSONDecodeError:
@@ -93,6 +98,7 @@ def main():
         "event": event,
         "pid": claude_pid,
         "tty": tty,
+        "provider": args.provider if args.provider else None,
     }
 
     # Map events to status

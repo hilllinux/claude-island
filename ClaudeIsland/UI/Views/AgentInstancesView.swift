@@ -28,7 +28,7 @@ struct AgentInstancesView: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.white.opacity(0.4))
 
-            Text("Run claude or gemini in terminal")
+            Text("Run claude, gemini or qwen in terminal")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.25))
         }

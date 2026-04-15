@@ -41,7 +41,8 @@ class ClaudeSessionMonitor: ObservableObject {
                     Task { @MainActor in
                         InterruptWatcherManager.shared.startWatching(
                             sessionId: event.sessionId,
-                            cwd: event.cwd
+                            cwd: event.cwd,
+                            provider: event.provider ?? .claude
                         )
                     }
                 }

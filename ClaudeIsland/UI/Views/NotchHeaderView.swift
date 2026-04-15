@@ -30,6 +30,8 @@ struct AgentIcon: View {
         Group {
             if provider == .gemini {
                 GeminiIcon(size: size, color: color)
+            } else if provider == .qwen {
+                QwenIcon(size: size, color: color)
             } else {
                 crabIcon
             }

@@ -5,7 +5,7 @@ Agent Island (formerly Claude Island) is a macOS menu bar application that bring
 ## Project Overview
 
 - **Core Purpose:** Enhance the AI Agent CLI experience with real-time notifications and interactive permission management via a MacBook-style notch UI.
-- **Multi-Agent Support:** Supports Claude (Orange/Crab branding) and Gemini (Blue/Star branding).
+- **Multi-Agent Support:** Supports Claude (Orange/Crab branding), Gemini (Blue/Star branding), and Qwen (Purple/Q branding).
 - **Main Technologies:** Swift, SwiftUI, AppKit, Unix Domain Sockets, Python (for hooks).
 - **Target Platform:** macOS 15.6+ (designed for MacBook notch).
 
@@ -14,11 +14,11 @@ Agent Island (formerly Claude Island) is a macOS menu bar application that bring
 ### 1. Agent Hooks & IPC
 The app monitors agents via a **Unix Domain Socket** at `/tmp/claude-island.sock`. 
 - **Claude:** Automatically installs a Python hook script (`claude-island-state.py`) into `~/.claude/hooks/`.
-- **Gemini / Others:** Can send JSON-encoded `HookEvent` objects to the socket. The event should include a `"provider": "gemini"` field for proper branding.
+- **Gemini / Qwen / Others:** Can send JSON-encoded `HookEvent` objects to the socket. The event should include a `"provider": "gemini"` or `"provider": "qwen"` field for proper branding.
 - **Permissions:** For `PermissionRequest`, the socket remains open until the app sends back a `HookResponse` (`allow` or `deny`).
 
 ### 2. Multi-Provider Modeling
-- **`AgentProvider`:** Enum defining supported agents (`.claude`, `.gemini`, `.custom`) with their respective brand colors and icons.
+- **`AgentProvider`:** Enum defining supported agents (`.claude`, `.gemini`, `.qwen`, `.custom`) with their respective brand colors and icons.
 - **`SessionState`:** Tracks the provider for each session to ensure correct UI rendering.
 
 ### 3. App Services
@@ -29,7 +29,7 @@ The app monitors agents via a **Unix Domain Socket** at `/tmp/claude-island.sock
 ### 4. UI Layer (Notch UI)
 - **`NotchView`:** The primary SwiftUI view that renders the expanded interface.
 - **`AgentInstancesView`:** Lists active sessions with provider-specific icons and status indicators.
-- **`AgentIcon`:** A dynamic pixel-art component that renders as a Crab for Claude or a Star for Gemini.
+- **`AgentIcon`:** A dynamic pixel-art component that renders as a Crab for Claude, a Star for Gemini, or a "Q" for Qwen.
 - **`ChatView`:** A full chat history interface with markdown support and provider-specific styling.
 
 ## Gemini Support Implementation

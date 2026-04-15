@@ -19,7 +19,6 @@ struct NotchView: View {
     @ObservedObject var viewModel: NotchViewModel
     @StateObject private var sessionMonitor = ClaudeSessionMonitor()
     @StateObject private var activityCoordinator = NotchActivityCoordinator.shared
-    @ObservedObject private var updateManager = UpdateManager.shared
     @State private var previousPendingIds: Set<String> = []
     @State private var previousWaitingForInputIds: Set<String> = []
     @State private var waitingForInputTimestamps: [String: Date] = [:]  // sessionId -> when it entered waitingForInput
@@ -323,9 +322,6 @@ struct NotchView: View {
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     viewModel.toggleMenu()
-                    if viewModel.contentType == .menu {
-                        updateManager.markUpdateSeen()
-                    }
                 }
             } label: {
                 ZStack(alignment: .topTrailing) {
@@ -334,14 +330,6 @@ struct NotchView: View {
                         .foregroundColor(.white.opacity(0.4))
                         .frame(width: 22, height: 22)
                         .contentShape(Rectangle())
-
-                    // Green dot for unseen update
-                    if updateManager.hasUnseenUpdate && viewModel.contentType != .menu {
-                        Circle()
-                            .fill(TerminalColors.green)
-                            .frame(width: 6, height: 6)
-                            .offset(x: -2, y: 2)
-                    }
                 }
             }
             .buttonStyle(.plain)

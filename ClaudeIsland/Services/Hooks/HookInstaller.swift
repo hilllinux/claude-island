@@ -9,20 +9,46 @@ import Foundation
 
 struct HookInstaller {
 
-    /// Install hook scripts and update settings for both Claude and Gemini
+    /// Install hook scripts and update settings for Claude, Gemini, and Qwen
     static func installIfNeeded() {
         installClaudeHooks()
         installGeminiHooks()
+        installQwenHooks()
     }
 
     // MARK: - Claude Support
 
     static func installClaudeHooks() {
-        let claudeDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude")
-        let hooksDir = claudeDir.appendingPathComponent("hooks")
-        let pythonScript = hooksDir.appendingPathComponent("claude-island-state.py")
-        let settings = claudeDir.appendingPathComponent("settings.json")
+        installPythonBasedHooks(
+            agentName: "claude",
+            configDir: ".claude",
+            provider: "claude"
+        )
+    }
+
+    // MARK: - Qwen Support
+
+    static func installQwenHooks() {
+        installPythonBasedHooks(
+            agentName: "qwen",
+            configDir: ".qwen",
+            provider: "qwen"
+        )
+    }
+
+    private static func installPythonBasedHooks(agentName: String, configDir: String, provider: String) {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let agentDir = homeDir.appendingPathComponent(configDir)
+        let hooksDir = agentDir.appendingPathComponent("hooks")
+        let scriptName = "\(agentName)-island-state.py"
+        let pythonScript = hooksDir.appendingPathComponent(scriptName)
+        let settings = agentDir.appendingPathComponent("settings.json")
+
+        // Only install if the agent directory exists (meaning the agent is installed)
+        // or if it's Claude (our primary target)
+        if agentName != "claude" && !FileManager.default.fileExists(atPath: agentDir.path) {
+            return
+        }
 
         try? FileManager.default.createDirectory(
             at: hooksDir,
@@ -38,10 +64,10 @@ struct HookInstaller {
             )
         }
 
-        updateClaudeSettings(at: settings)
+        updatePythonHooksSettings(at: settings, scriptPath: "~/\(configDir)/hooks/\(scriptName)", provider: provider)
     }
 
-    private static func updateClaudeSettings(at settingsURL: URL) {
+    private static func updatePythonHooksSettings(at settingsURL: URL, scriptPath: String, provider: String) {
         var json: [String: Any] = [:]
         if let data = try? Data(contentsOf: settingsURL),
            let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -49,7 +75,7 @@ struct HookInstaller {
         }
 
         let python = detectPython()
-        let command = "\(python) ~/.claude/hooks/claude-island-state.py"
+        let command = "\(python) \(scriptPath) --provider \(provider)"
         let hookEntry: [[String: Any]] = [["type": "command", "command": command]]
         let hookEntryWithTimeout: [[String: Any]] = [["type": "command", "command": command, "timeout": 86400]]
         let withMatcher: [[String: Any]] = [["matcher": "*", "hooks": hookEntry]]
@@ -81,7 +107,7 @@ struct HookInstaller {
                     if let entryHooks = entry["hooks"] as? [[String: Any]] {
                         return entryHooks.contains { h in
                             let cmd = h["command"] as? String ?? ""
-                            return cmd.contains("claude-island-state.py")
+                            return cmd.contains(scriptPath.components(separatedBy: "/").last ?? "claude-island-state.py")
                         }
                     }
                     return false
@@ -214,9 +240,18 @@ struct HookInstaller {
 
     /// Check if Claude hooks are currently installed
     static func isInstalled() -> Bool {
-        let claudeDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude")
-        let settings = claudeDir.appendingPathComponent("settings.json")
+        isPythonHookInstalled(configDir: ".claude", scriptName: "claude-island-state.py")
+    }
+
+    /// Check if Qwen hooks are currently installed
+    static func isQwenInstalled() -> Bool {
+        isPythonHookInstalled(configDir: ".qwen", scriptName: "qwen-island-state.py")
+    }
+
+    private static func isPythonHookInstalled(configDir: String, scriptName: String) -> Bool {
+        let agentDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(configDir)
+        let settings = agentDir.appendingPathComponent("settings.json")
 
         guard let data = try? Data(contentsOf: settings),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -230,7 +265,7 @@ struct HookInstaller {
                     if let entryHooks = entry["hooks"] as? [[String: Any]] {
                         for hook in entryHooks {
                             if let cmd = hook["command"] as? String,
-                               cmd.contains("claude-island-state.py") {
+                               cmd.contains(scriptName) {
                                 return true
                             }
                         }
@@ -270,18 +305,27 @@ struct HookInstaller {
         return false
     }
 
-    /// Uninstall both Claude and Gemini hooks
+    /// Uninstall all hooks (Claude, Gemini, Qwen)
     static func uninstall() {
         uninstallClaude()
         uninstallGemini()
+        uninstallQwen()
     }
 
     private static func uninstallClaude() {
-        let claudeDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude")
-        let hooksDir = claudeDir.appendingPathComponent("hooks")
-        let pythonScript = hooksDir.appendingPathComponent("claude-island-state.py")
-        let settings = claudeDir.appendingPathComponent("settings.json")
+        uninstallPythonHook(configDir: ".claude", scriptName: "claude-island-state.py")
+    }
+
+    private static func uninstallQwen() {
+        uninstallPythonHook(configDir: ".qwen", scriptName: "qwen-island-state.py")
+    }
+
+    private static func uninstallPythonHook(configDir: String, scriptName: String) {
+        let agentDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(configDir)
+        let hooksDir = agentDir.appendingPathComponent("hooks")
+        let pythonScript = hooksDir.appendingPathComponent(scriptName)
+        let settings = agentDir.appendingPathComponent("settings.json")
 
         try? FileManager.default.removeItem(at: pythonScript)
 
@@ -297,7 +341,7 @@ struct HookInstaller {
                     if let entryHooks = entry["hooks"] as? [[String: Any]] {
                         return entryHooks.contains { hook in
                             let cmd = hook["command"] as? String ?? ""
-                            return cmd.contains("claude-island-state.py")
+                            return cmd.contains(scriptName)
                         }
                     }
                     return false

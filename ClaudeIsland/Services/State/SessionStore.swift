@@ -495,7 +495,8 @@ actor SessionStore {
         // Update conversationInfo from JSONL (summary, lastMessage, etc.)
         let conversationInfo = await ConversationParser.shared.parse(
             sessionId: payload.sessionId,
-            cwd: session.cwd
+            cwd: session.cwd,
+            provider: session.provider
         )
         session.conversationInfo = conversationInfo
 
@@ -660,7 +661,8 @@ actor SessionStore {
 
             let subagentToolInfos = await ConversationParser.shared.parseSubagentTools(
                 agentId: taskResult.agentId,
-                cwd: cwd
+                cwd: cwd,
+                provider: session.provider
             )
 
             guard !subagentToolInfos.isEmpty else { continue }
@@ -850,10 +852,13 @@ actor SessionStore {
     // MARK: - History Loading
 
     private func loadHistoryFromFile(sessionId: String, cwd: String) async {
+        guard let session = sessions[sessionId] else { return }
+
         // Parse file asynchronously
         let messages = await ConversationParser.shared.parseFullConversation(
             sessionId: sessionId,
-            cwd: cwd
+            cwd: cwd,
+            provider: session.provider
         )
         let completedTools = await ConversationParser.shared.completedToolIds(for: sessionId)
         let toolResults = await ConversationParser.shared.toolResults(for: sessionId)
@@ -862,7 +867,8 @@ actor SessionStore {
         // Also parse conversationInfo (summary, lastMessage, etc.)
         let conversationInfo = await ConversationParser.shared.parse(
             sessionId: sessionId,
-            cwd: cwd
+            cwd: cwd,
+            provider: session.provider
         )
 
         // Process loaded history
@@ -928,10 +934,13 @@ actor SessionStore {
             try? await Task.sleep(nanoseconds: syncDebounceNs)
             guard !Task.isCancelled else { return }
 
+            guard let session = await self?.session(for: sessionId) else { return }
+
             // Parse incrementally - only get NEW messages since last call
             let result = await ConversationParser.shared.parseIncremental(
                 sessionId: sessionId,
-                cwd: cwd
+                cwd: cwd,
+                provider: session.provider
             )
 
             if result.clearDetected {

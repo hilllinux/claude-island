@@ -24,6 +24,7 @@ class JSONLInterruptWatcher {
     private var lastOffset: UInt64 = 0
     private let sessionId: String
     private let filePath: String
+    private let provider: AgentProvider
     private let queue = DispatchQueue(label: "com.claudeisland.interruptwatcher", qos: .userInteractive)
 
     weak var delegate: JSONLInterruptWatcherDelegate?
@@ -37,11 +38,12 @@ class JSONLInterruptWatcher {
         "[Request interrupted by user"
     ]
 
-    init(sessionId: String, cwd: String) {
+    init(sessionId: String, cwd: String, provider: AgentProvider) {
         self.sessionId = sessionId
+        self.provider = provider
         let projectDir = cwd.replacingOccurrences(of: "/", with: "-")
                             .replacingOccurrences(of: ".", with: "-")
-        self.filePath = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/" + sessionId + ".jsonl"
+        self.filePath = NSHomeDirectory() + "/" + provider.configDirectoryName + "/projects/" + projectDir + "/" + sessionId + ".jsonl"
     }
 
     /// Start watching the JSONL file for interrupts
@@ -185,10 +187,10 @@ class InterruptWatcherManager {
 
     private init() {}
 
-    func startWatching(sessionId: String, cwd: String) {
+    func startWatching(sessionId: String, cwd: String, provider: AgentProvider) {
         guard watchers[sessionId] == nil else { return }
 
-        let watcher = JSONLInterruptWatcher(sessionId: sessionId, cwd: cwd)
+        let watcher = JSONLInterruptWatcher(sessionId: sessionId, cwd: cwd, provider: provider)
         watcher.delegate = delegate
         watcher.start()
         watchers[sessionId] = watcher

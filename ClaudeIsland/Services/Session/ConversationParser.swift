@@ -80,9 +80,8 @@ actor ConversationParser {
 
     /// Parse a JSONL file to extract conversation info
     /// Uses caching based on file modification time
-    func parse(sessionId: String, cwd: String) -> ConversationInfo {
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        let sessionFile = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/" + sessionId + ".jsonl"
+    func parse(sessionId: String, cwd: String, provider: AgentProvider) -> ConversationInfo {
+        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
 
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: sessionFile),
@@ -271,8 +270,8 @@ actor ConversationParser {
     // MARK: - Full Conversation Parsing
 
     /// Parse full conversation history for chat view (returns ALL messages - use sparingly)
-    func parseFullConversation(sessionId: String, cwd: String) -> [ChatMessage] {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd)
+    func parseFullConversation(sessionId: String, cwd: String, provider: AgentProvider) -> [ChatMessage] {
+        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
 
         guard FileManager.default.fileExists(atPath: sessionFile) else {
             return []
@@ -296,8 +295,8 @@ actor ConversationParser {
     }
 
     /// Parse only NEW messages since last call (efficient incremental updates)
-    func parseIncremental(sessionId: String, cwd: String) -> IncrementalParseResult {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd)
+    func parseIncremental(sessionId: String, cwd: String, provider: AgentProvider) -> IncrementalParseResult {
+        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
 
         guard FileManager.default.fileExists(atPath: sessionFile) else {
             return IncrementalParseResult(
@@ -467,9 +466,9 @@ actor ConversationParser {
     }
 
     /// Build session file path
-    private static func sessionFilePath(sessionId: String, cwd: String) -> String {
+    private static func sessionFilePath(sessionId: String, cwd: String, provider: AgentProvider) -> String {
         let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        return NSHomeDirectory() + "/.claude/projects/" + projectDir + "/" + sessionId + ".jsonl"
+        return NSHomeDirectory() + "/" + provider.configDirectoryName + "/projects/" + projectDir + "/" + sessionId + ".jsonl"
     }
 
     private func parseMessageLine(_ json: [String: Any], seenToolIds: inout Set<String>, toolIdToName: inout [String: String]) -> ChatMessage? {
@@ -893,11 +892,11 @@ actor ConversationParser {
     // MARK: - Subagent Tools Parsing
 
     /// Parse subagent tools from an agent JSONL file
-    func parseSubagentTools(agentId: String, cwd: String) -> [SubagentToolInfo] {
+    func parseSubagentTools(agentId: String, cwd: String, provider: AgentProvider) -> [SubagentToolInfo] {
         guard !agentId.isEmpty else { return [] }
 
         let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        let agentFile = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
+        let agentFile = NSHomeDirectory() + "/" + provider.configDirectoryName + "/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
 
         guard FileManager.default.fileExists(atPath: agentFile),
               let content = try? String(contentsOfFile: agentFile, encoding: .utf8) else {
@@ -985,11 +984,11 @@ struct SubagentToolInfo: Sendable {
 
 extension ConversationParser {
     /// Parse subagent tools from an agent JSONL file (static, synchronous version)
-    nonisolated static func parseSubagentToolsSync(agentId: String, cwd: String) -> [SubagentToolInfo] {
+    nonisolated static func parseSubagentToolsSync(agentId: String, cwd: String, provider: AgentProvider) -> [SubagentToolInfo] {
         guard !agentId.isEmpty else { return [] }
 
         let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        let agentFile = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
+        let agentFile = NSHomeDirectory() + "/" + provider.configDirectoryName + "/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
 
         guard FileManager.default.fileExists(atPath: agentFile),
               let content = try? String(contentsOfFile: agentFile, encoding: .utf8) else {

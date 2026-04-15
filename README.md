@@ -1,8 +1,8 @@
 <div align="center">
   <img src="ClaudeIsland/Assets.xcassets/AppIcon.appiconset/icon_128x128.png" alt="Logo" width="100" height="100">
-  <h3 align="center">Claude Island</h3>
+  <h3 align="center">Agent Island</h3>
   <p align="center">
-    A macOS menu bar app that brings Dynamic Island-style notifications to Claude Code CLI sessions.
+    A macOS menu bar app that brings Dynamic Island-style notifications to Claude Code, Gemini CLI, and Qwen Code sessions.
     <br />
     <br />
     <a href="https://github.com/farouqaldori/claude-island/releases/latest" target="_blank" rel="noopener noreferrer">
@@ -17,7 +17,8 @@
 ## Features
 
 - **Notch UI** — Animated overlay that expands from the MacBook notch
-- **Live Session Monitoring** — Track multiple Claude Code sessions in real-time
+- **Multi-Agent Support** — Support for Claude Code, Gemini CLI, and Qwen Code
+- **Live Session Monitoring** — Track multiple agent sessions in real-time
 - **Permission Approvals** — Approve or deny tool executions directly from the notch
 - **Chat History** — View full conversation history with markdown rendering
 - **Auto-Setup** — Hooks install automatically on first launch
@@ -25,7 +26,7 @@
 ## Requirements
 
 - macOS 15.6+
-- Claude Code CLI
+- Claude Code, Gemini CLI, or Qwen Code
 
 ## Install
 
