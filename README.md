@@ -2,7 +2,7 @@
   <img src="ClaudeIsland/Assets.xcassets/AppIcon.appiconset/icon_128x128.png" alt="Logo" width="100" height="100">
   <h3 align="center">Agent Island</h3>
   <p align="center">
-    A macOS menu bar app that brings Dynamic Island-style notifications to Claude Code, Gemini CLI, and Qwen Code sessions.
+    A macOS menu bar app that brings Dynamic Island-style notifications to Claude Code, Gemini CLI, Qwen Code, and Codex sessions.
     <br />
     <br />
     <a href="https://github.com/farouqaldori/claude-island/releases/latest" target="_blank" rel="noopener noreferrer">
@@ -17,7 +17,7 @@
 ## Features
 
 - **Notch UI** — Animated overlay that expands from the MacBook notch
-- **Multi-Agent Support** — Support for Claude Code, Gemini CLI, and Qwen Code
+- **Multi-Agent Support** — Support for Claude Code, Gemini CLI, Qwen Code, and Codex
 - **Live Session Monitoring** — Track multiple agent sessions in real-time
 - **Permission Approvals** — Approve or deny tool executions directly from the notch
 - **Chat History** — View full conversation history with markdown rendering
@@ -26,7 +26,7 @@
 ## Requirements
 
 - macOS 15.6+
-- Claude Code, Gemini CLI, or Qwen Code
+- Claude Code, Gemini CLI, Qwen Code, or Codex
 
 ## Install
 
@@ -38,16 +38,16 @@ xcodebuild -scheme ClaudeIsland -configuration Release build
 
 ## How It Works
 
-Claude Island installs hooks into `~/.claude/hooks/` that communicate session state via a Unix socket. The app listens for events and displays them in the notch overlay.
+Agent Island installs hooks into agent configuration directories (e.g., `~/.claude/hooks/`) that communicate session state via a Unix socket. The app listens for events and displays them in the notch overlay.
 
-When Claude needs permission to run a tool, the notch expands with approve/deny buttons—no need to switch to the terminal.
+When an agent needs permission to run a tool, the notch expands with approve/deny buttons—no need to switch to the terminal.
 
 ## Analytics
 
-Claude Island uses Mixpanel to collect anonymous usage data:
+Agent Island uses Mixpanel to collect anonymous usage data:
 
 - **App Launched** — App version, build number, macOS version
-- **Session Started** — When a new Claude Code session is detected
+- **Session Started** — When a new agent session is detected
 
 No personal data or conversation content is collected.
 

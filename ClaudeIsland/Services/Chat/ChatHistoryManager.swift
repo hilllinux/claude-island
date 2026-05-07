@@ -42,10 +42,14 @@ class ChatHistoryManager: ObservableObject {
     }
 
     func syncFromFile(sessionId: String, cwd: String, provider: AgentProvider = .claude) async {
+        let session = await SessionStore.shared.session(for: sessionId)
+        let transcriptPath = session?.transcriptPath
+
         let messages = await ConversationParser.shared.parseFullConversation(
             sessionId: sessionId,
             cwd: cwd,
-            provider: provider
+            provider: provider,
+            transcriptPath: transcriptPath
         )
         let completedTools = await ConversationParser.shared.completedToolIds(for: sessionId)
         let toolResults = await ConversationParser.shared.toolResults(for: sessionId)

@@ -9,11 +9,12 @@ import Foundation
 
 struct HookInstaller {
 
-    /// Install hook scripts and update settings for Claude, Gemini, and Qwen
+    /// Install hook scripts and update settings for Claude, Gemini, Qwen, and Codex
     static func installIfNeeded() {
         installClaudeHooks()
         installGeminiHooks()
         installQwenHooks()
+        installCodexHooks()
     }
 
     // MARK: - Claude Support
@@ -34,6 +35,83 @@ struct HookInstaller {
             configDir: ".qwen",
             provider: "qwen"
         )
+    }
+
+    // MARK: - Codex Support
+
+    static func installCodexHooks() {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let configDir = ".codex"
+        let agentDir = homeDir.appendingPathComponent(configDir)
+        let hooksDir = agentDir.appendingPathComponent("hooks")
+        let scriptName = "codex-island-state.py"
+        let pythonScript = hooksDir.appendingPathComponent(scriptName)
+        let configPath = agentDir.appendingPathComponent("config.toml")
+
+        // Only install if the agent directory exists
+        if !FileManager.default.fileExists(atPath: agentDir.path) {
+            return
+        }
+
+        try? FileManager.default.createDirectory(
+            at: hooksDir,
+            withIntermediateDirectories: true
+        )
+
+        if let bundled = Bundle.main.url(forResource: "claude-island-state", withExtension: "py") {
+            try? FileManager.default.removeItem(at: pythonScript)
+            try? FileManager.default.copyItem(at: bundled, to: pythonScript)
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o755],
+                ofItemAtPath: pythonScript.path
+            )
+        }
+
+        updateCodexConfig(at: configPath, scriptPath: "~/\(configDir)/hooks/\(scriptName)")
+    }
+
+    private static func updateCodexConfig(at configURL: URL, scriptPath: String) {
+        let python = detectPython()
+        let command = "\(python) \(scriptPath) --provider codex"
+        
+        // Use a shell command to update the TOML file if the hook isn't already there
+        // This is safer than trying to parse TOML in Swift without a library
+        let scriptName = scriptPath.components(separatedBy: "/").last ?? "codex-island-state.py"
+        let checkCmd = "grep -q '\(scriptName)' \(configURL.path)"
+        
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", checkCmd]
+        try? process.run()
+        process.waitUntilExit()
+        
+        if process.terminationStatus != 0 {
+            // Hook not found, append it to [hooks] section
+            let appendCmd = """
+            if ! grep -q '^\\[hooks\\]' \(configURL.path); then
+                echo '\\n[hooks]' >> \(configURL.path)
+            fi
+            
+            # Add common hooks if not present
+            for event in UserPromptSubmit SessionStart Stop PreToolUse PostToolUse PermissionRequest Notification SessionEnd PreCompact; do
+                if ! grep -q "$event =" \(configURL.path); then
+                    if [ "$event" = "PreToolUse" ] || [ "$event" = "PostToolUse" ] || [ "$event" = "PermissionRequest" ]; then
+                        echo "$event = [{ matcher = \\"*\\", hooks = [{ type = \\"command\\", command = \\"\(command)\\" }] }]" >> \(configURL.path)
+                    elif [ "$event" = "PreCompact" ]; then
+                        echo "$event = [{ matcher = \\"auto\\", hooks = [{ type = \\"command\\", command = \\"\(command)\\" }] }, { matcher = \\"manual\\", hooks = [{ type = \\"command\\", command = \\"\(command)\\" }] }]" >> \(configURL.path)
+                    else
+                        echo "$event = [{ hooks = [{ type = \\"command\\", command = \\"\(command)\\" }] }]" >> \(configURL.path)
+                    fi
+                fi
+            done
+            """
+            
+            let appendProcess = Process()
+            appendProcess.executableURL = URL(fileURLWithPath: "/bin/sh")
+            appendProcess.arguments = ["-c", appendCmd]
+            try? appendProcess.run()
+            appendProcess.waitUntilExit()
+        }
     }
 
     private static func installPythonBasedHooks(agentName: String, configDir: String, provider: String) {
@@ -248,6 +326,11 @@ struct HookInstaller {
         isPythonHookInstalled(configDir: ".qwen", scriptName: "qwen-island-state.py")
     }
 
+    /// Check if Codex hooks are currently installed
+    static func isCodexInstalled() -> Bool {
+        isPythonHookInstalled(configDir: ".codex", scriptName: "codex-island-state.py")
+    }
+
     private static func isPythonHookInstalled(configDir: String, scriptName: String) -> Bool {
         let agentDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(configDir)
@@ -305,11 +388,12 @@ struct HookInstaller {
         return false
     }
 
-    /// Uninstall all hooks (Claude, Gemini, Qwen)
+    /// Uninstall all hooks (Claude, Gemini, Qwen, Codex)
     static func uninstall() {
         uninstallClaude()
         uninstallGemini()
         uninstallQwen()
+        uninstallCodex()
     }
 
     private static func uninstallClaude() {
@@ -318,6 +402,10 @@ struct HookInstaller {
 
     private static func uninstallQwen() {
         uninstallPythonHook(configDir: ".qwen", scriptName: "qwen-island-state.py")
+    }
+
+    private static func uninstallCodex() {
+        uninstallPythonHook(configDir: ".codex", scriptName: "codex-island-state.py")
     }
 
     private static func uninstallPythonHook(configDir: String, scriptName: String) {

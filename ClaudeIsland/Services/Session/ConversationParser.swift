@@ -80,8 +80,8 @@ actor ConversationParser {
 
     /// Parse a JSONL file to extract conversation info
     /// Uses caching based on file modification time
-    func parse(sessionId: String, cwd: String, provider: AgentProvider) -> ConversationInfo {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
+    func parse(sessionId: String, cwd: String, provider: AgentProvider, transcriptPath: String? = nil) -> ConversationInfo {
+        let sessionFile = transcriptPath ?? Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
 
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: sessionFile),
@@ -270,8 +270,8 @@ actor ConversationParser {
     // MARK: - Full Conversation Parsing
 
     /// Parse full conversation history for chat view (returns ALL messages - use sparingly)
-    func parseFullConversation(sessionId: String, cwd: String, provider: AgentProvider) -> [ChatMessage] {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
+    func parseFullConversation(sessionId: String, cwd: String, provider: AgentProvider, transcriptPath: String? = nil) -> [ChatMessage] {
+        let sessionFile = transcriptPath ?? Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
 
         guard FileManager.default.fileExists(atPath: sessionFile) else {
             return []
@@ -295,8 +295,8 @@ actor ConversationParser {
     }
 
     /// Parse only NEW messages since last call (efficient incremental updates)
-    func parseIncremental(sessionId: String, cwd: String, provider: AgentProvider) -> IncrementalParseResult {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
+    func parseIncremental(sessionId: String, cwd: String, provider: AgentProvider, transcriptPath: String? = nil) -> IncrementalParseResult {
+        let sessionFile = transcriptPath ?? Self.sessionFilePath(sessionId: sessionId, cwd: cwd, provider: provider)
 
         guard FileManager.default.fileExists(atPath: sessionFile) else {
             return IncrementalParseResult(

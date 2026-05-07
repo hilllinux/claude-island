@@ -5,7 +5,7 @@ Agent Island (formerly Claude Island) is a macOS menu bar application that bring
 ## Project Overview
 
 - **Core Purpose:** Enhance the AI Agent CLI experience with real-time notifications and interactive permission management via a MacBook-style notch UI.
-- **Multi-Agent Support:** Supports Claude (Orange/Crab branding), Gemini (Blue/Star branding), and Qwen (Purple/Q branding).
+- **Multi-Agent Support:** Supports Claude (Orange/Crab branding), Gemini (Blue/Star branding), Qwen (Purple/Q branding), and Codex (Green/C branding).
 - **Main Technologies:** Swift, SwiftUI, AppKit, Unix Domain Sockets, Python (for hooks).
 - **Target Platform:** macOS 15.6+ (designed for MacBook notch).
 
@@ -14,11 +14,11 @@ Agent Island (formerly Claude Island) is a macOS menu bar application that bring
 ### 1. Agent Hooks & IPC
 The app monitors agents via a **Unix Domain Socket** at `/tmp/claude-island.sock`. 
 - **Claude:** Automatically installs a Python hook script (`claude-island-state.py`) into `~/.claude/hooks/`.
-- **Gemini / Qwen / Others:** Can send JSON-encoded `HookEvent` objects to the socket. The event should include a `"provider": "gemini"` or `"provider": "qwen"` field for proper branding.
+- **Gemini / Qwen / Codex / Others:** Can send JSON-encoded `HookEvent` objects to the socket. The event should include a `"provider": "gemini"`, `"provider": "qwen"`, or `"provider": "codex"` field for proper branding.
 - **Permissions:** For `PermissionRequest`, the socket remains open until the app sends back a `HookResponse` (`allow` or `deny`).
 
 ### 2. Multi-Provider Modeling
-- **`AgentProvider`:** Enum defining supported agents (`.claude`, `.gemini`, `.qwen`, `.custom`) with their respective brand colors and icons.
+- **`AgentProvider`:** Enum defining supported agents (`.claude`, `.gemini`, `.qwen`, `.codex`, `.custom`) with their respective brand colors and icons.
 - **`SessionState`:** Tracks the provider for each session to ensure correct UI rendering.
 
 ### 3. App Services

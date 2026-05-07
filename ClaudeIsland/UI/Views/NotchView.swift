@@ -35,7 +35,12 @@ struct NotchView: View {
 
     /// The provider that is currently active (if any)
     private var activeProvider: AgentProvider? {
-        sessionMonitor.instances.first { $0.phase == .processing || $0.phase == .compacting || $0.phase.isWaitingForApproval }?.provider
+        sessionMonitor.instances.first { 
+            $0.phase == .processing || 
+            $0.phase == .compacting || 
+            $0.phase.isWaitingForApproval ||
+            $0.phase == .waitingForInput
+        }?.provider
     }
 
     /// Whether any Claude session has a pending permission request
@@ -75,7 +80,7 @@ struct NotchView: View {
         // Expand for processing activity
         if activityCoordinator.expandingActivity.show {
             switch activityCoordinator.expandingActivity.type {
-            case .claude:
+            case .agent:
                 let baseWidth = 2 * max(0, closedNotchSize.height - 12) + 20
                 return baseWidth + permissionIndicatorWidth
             case .none:
@@ -215,7 +220,7 @@ struct NotchView: View {
 
     private var isProcessing: Bool {
         activityCoordinator.expandingActivity.show && 
-        (activityCoordinator.expandingActivity.type == .claude)
+        (activityCoordinator.expandingActivity.type == .agent)
     }
 
     /// Whether to show the expanded closed state (processing, pending permission, or waiting for input)
@@ -286,12 +291,12 @@ struct NotchView: View {
             // Right side - spinner when processing/pending, checkmark when waiting for input
             if showClosedActivity {
                 if isProcessing || hasPendingPermission {
-                    ProcessingSpinner()
+                    ProcessingSpinner(color: (activeProvider ?? .claude).brandColor)
                         .matchedGeometryEffect(id: "spinner", in: activityNamespace, isSource: showClosedActivity)
                         .frame(width: viewModel.status == .opened ? 20 : sideWidth)
                 } else if hasWaitingForInput {
                     // Checkmark for waiting-for-input on the right side
-                    ReadyForInputIndicatorIcon(size: 14, color: TerminalColors.green)
+                    ReadyForInputIndicatorIcon(size: 14, color: (activeProvider ?? .claude).brandColor)
                         .matchedGeometryEffect(id: "spinner", in: activityNamespace, isSource: showClosedActivity)
                         .frame(width: viewModel.status == .opened ? 20 : sideWidth)
                 }
@@ -366,8 +371,8 @@ struct NotchView: View {
 
     private func handleProcessingChange() {
         if isAnyProcessing || hasPendingPermission {
-            // Show claude activity when processing or waiting for permission
-            activityCoordinator.showActivity(type: .claude)
+            // Show agent activity when processing or waiting for permission
+            activityCoordinator.showActivity(type: .agent)
             isVisible = true
         } else if hasWaitingForInput {
             // Keep visible for waiting-for-input but hide the processing spinner

@@ -32,6 +32,8 @@ struct AgentIcon: View {
                 GeminiIcon(size: size, color: color)
             } else if provider == .qwen {
                 QwenIcon(size: size, color: color)
+            } else if provider == .codex {
+                CodexIcon(size: size, color: color)
             } else {
                 crabIcon
             }

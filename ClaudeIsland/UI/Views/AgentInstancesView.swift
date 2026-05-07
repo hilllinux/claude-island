@@ -28,7 +28,7 @@ struct AgentInstancesView: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.white.opacity(0.4))
 
-            Text("Run claude, gemini or qwen in terminal")
+            Text("Run claude, gemini, qwen or codex in terminal")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.25))
         }
@@ -307,13 +307,13 @@ struct InstanceRow: View {
         case .waitingForApproval:
             Text(spinnerSymbols[spinnerPhase % spinnerSymbols.count])
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(TerminalColors.amber)
+                .foregroundColor(session.provider.brandColor)
                 .onReceive(spinnerTimer) { _ in
                     spinnerPhase = (spinnerPhase + 1) % spinnerSymbols.count
                 }
         case .waitingForInput:
             Circle()
-                .fill(TerminalColors.green)
+                .fill(session.provider.brandColor)
                 .frame(width: 6, height: 6)
         case .idle, .ended:
             Circle()

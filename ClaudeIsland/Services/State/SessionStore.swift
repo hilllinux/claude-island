@@ -133,6 +133,14 @@ actor SessionStore {
         if let tty = event.tty {
             session.tty = tty.replacingOccurrences(of: "/dev/", with: "")
         }
+        if let transcriptPath = event.transcriptPath {
+            session.transcriptPath = transcriptPath
+        }
+
+        if let provider = event.provider, session.provider == .claude {
+            session.provider = provider
+        }
+
         session.lastActivity = Date()
 
         if event.status == "ended" {
@@ -178,7 +186,8 @@ actor SessionStore {
             pid: event.pid,
             tty: event.tty?.replacingOccurrences(of: "/dev/", with: ""),
             isInTmux: false,  // Will be updated
-            phase: .idle
+            phase: .idle,
+            transcriptPath: event.transcriptPath
         )
     }
 
@@ -496,7 +505,8 @@ actor SessionStore {
         let conversationInfo = await ConversationParser.shared.parse(
             sessionId: payload.sessionId,
             cwd: session.cwd,
-            provider: session.provider
+            provider: session.provider,
+            transcriptPath: session.transcriptPath
         )
         session.conversationInfo = conversationInfo
 
@@ -858,7 +868,8 @@ actor SessionStore {
         let messages = await ConversationParser.shared.parseFullConversation(
             sessionId: sessionId,
             cwd: cwd,
-            provider: session.provider
+            provider: session.provider,
+            transcriptPath: session.transcriptPath
         )
         let completedTools = await ConversationParser.shared.completedToolIds(for: sessionId)
         let toolResults = await ConversationParser.shared.toolResults(for: sessionId)
@@ -868,7 +879,8 @@ actor SessionStore {
         let conversationInfo = await ConversationParser.shared.parse(
             sessionId: sessionId,
             cwd: cwd,
-            provider: session.provider
+            provider: session.provider,
+            transcriptPath: session.transcriptPath
         )
 
         // Process loaded history
@@ -940,7 +952,8 @@ actor SessionStore {
             let result = await ConversationParser.shared.parseIncremental(
                 sessionId: sessionId,
                 cwd: cwd,
-                provider: session.provider
+                provider: session.provider,
+                transcriptPath: session.transcriptPath
             )
 
             if result.clearDetected {

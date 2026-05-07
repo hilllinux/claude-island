@@ -16,7 +16,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
     let sessionId: String
     let cwd: String
     let projectName: String
-    let provider: AgentProvider
+    var provider: AgentProvider
 
     // MARK: - Instance Metadata
 
@@ -33,6 +33,9 @@ struct SessionState: Equatable, Identifiable, Sendable {
 
     /// All chat items for this session (replaces ChatHistoryManager.histories)
     var chatItems: [ChatHistoryItem]
+
+    /// Path to the session's JSONL transcript file (if known)
+    var transcriptPath: String?
 
     // MARK: - Tool Tracking
 
@@ -75,6 +78,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
         isInTmux: Bool = false,
         phase: SessionPhase = .idle,
         chatItems: [ChatHistoryItem] = [],
+        transcriptPath: String? = nil,
         toolTracker: ToolTracker = ToolTracker(),
         subagentState: SubagentState = SubagentState(),
         conversationInfo: ConversationInfo = ConversationInfo(
@@ -94,6 +98,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
         self.isInTmux = isInTmux
         self.phase = phase
         self.chatItems = chatItems
+        self.transcriptPath = transcriptPath
         self.toolTracker = toolTracker
         self.subagentState = subagentState
         self.conversationInfo = conversationInfo

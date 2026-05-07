@@ -606,7 +606,7 @@ struct ProcessingIndicatorView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 6) {
-            ProcessingSpinner()
+            ProcessingSpinner(color: color)
                 .frame(width: 6)
 
             Text(baseText + dots)
