@@ -13,8 +13,12 @@ Agent Island (formerly Claude Island) is a macOS menu bar application that bring
 
 ### 1. Agent Hooks & IPC
 The app monitors agents via a **Unix Domain Socket** at `/tmp/claude-island.sock`. 
-- **Claude:** Automatically installs a Python hook script (`claude-island-state.py`) into `~/.claude/hooks/`.
-- **Gemini / Qwen / Codex / Others:** Can send JSON-encoded `HookEvent` objects to the socket. The event should include a `"provider": "gemini"`, `"provider": "qwen"`, or `"provider": "codex"` field for proper branding.
+- **Auto-Installation:** The app automatically installs hook scripts into the configuration directories of supported agents:
+  - **Claude:** `~/.claude/hooks/claude-island-state.py`
+  - **Gemini:** `~/.gemini/hooks/gemini-island-bridge.js`
+  - **Qwen:** `~/.qwen/hooks/qwen-island-state.py`
+  - **Codex:** `~/.codex/hooks/codex-island-state.py`
+- **Manual Integration:** Other agents can send JSON-encoded `HookEvent` objects to the socket. The event should include a `"provider"` field (`gemini`, `qwen`, `codex`, or `claude`) for proper branding.
 - **Permissions:** For `PermissionRequest`, the socket remains open until the app sends back a `HookResponse` (`allow` or `deny`).
 
 ### 2. Multi-Provider Modeling

@@ -54,7 +54,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApplication.shared.setActivationPolicy(.accessory)
 
         windowManager = WindowManager()
-        _ = windowManager?.setupNotchWindow()
+        _ = windowManager?.setupNotchWindow(shouldAnimate: true)
 
         screenObserver = ScreenObserver { [weak self] in
             self?.handleScreenChange()
@@ -62,7 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleScreenChange() {
-        _ = windowManager?.setupNotchWindow()
+        _ = windowManager?.setupNotchWindow(shouldAnimate: false)
     }
 
     func applicationWillTerminate(_ notification: Notification) {

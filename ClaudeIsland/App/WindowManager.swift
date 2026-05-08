@@ -15,7 +15,7 @@ class WindowManager {
     private(set) var windowController: NotchWindowController?
 
     /// Set up or recreate the notch window
-    func setupNotchWindow() -> NotchWindowController? {
+    func setupNotchWindow(shouldAnimate: Bool = false) -> NotchWindowController? {
         // Use ScreenSelector for screen selection
         let screenSelector = ScreenSelector.shared
         screenSelector.refreshScreens()
@@ -31,7 +31,7 @@ class WindowManager {
             windowController = nil
         }
 
-        windowController = NotchWindowController(screen: screen)
+        windowController = NotchWindowController(screen: screen, shouldAnimate: shouldAnimate)
         windowController?.showWindow(nil)
 
         return windowController
