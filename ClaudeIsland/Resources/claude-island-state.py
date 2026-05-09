@@ -12,6 +12,32 @@ import sys
 
 SOCKET_PATH = "/tmp/claude-island.sock"
 TIMEOUT_SECONDS = 300  # 5 minutes for permission decisions
+NOTIFY_TIMEOUT_SECONDS = 2
+
+
+def secure_socket_path(path):
+    """Return True only for a same-user Unix socket that is not group/world writable."""
+    import stat
+
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return False
+
+    if not stat.S_ISSOCK(st.st_mode):
+        return False
+    if st.st_uid != os.getuid():
+        return False
+
+    # If the trusted app created a permissive socket, tighten it before use.
+    if st.st_mode & 0o077:
+        try:
+            os.chmod(path, 0o600)
+            st = os.lstat(path)
+        except OSError:
+            return False
+
+    return (st.st_mode & 0o077) == 0
 
 
 def get_tty():
@@ -52,14 +78,19 @@ def get_tty():
 
 def send_event(state):
     """Send event to app, return response if any"""
+    if not secure_socket_path(SOCKET_PATH):
+        return None
+
+    wants_approval = state.get("status") == "waiting_for_approval"
+
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.settimeout(TIMEOUT_SECONDS)
+        sock.settimeout(TIMEOUT_SECONDS if wants_approval else NOTIFY_TIMEOUT_SECONDS)
         sock.connect(SOCKET_PATH)
         sock.sendall(json.dumps(state).encode())
 
         # For permission requests, wait for response
-        if state.get("status") == "waiting_for_approval":
+        if wants_approval:
             response = sock.recv(4096)
             sock.close()
             if response:
@@ -109,7 +140,6 @@ def main():
     elif event == "PreToolUse":
         state["status"] = "running_tool"
         state["tool"] = data.get("tool_name")
-        state["tool_input"] = tool_input
         # Send tool_use_id to Swift for caching
         tool_use_id_from_event = data.get("tool_use_id")
         if tool_use_id_from_event:
@@ -118,7 +148,6 @@ def main():
     elif event == "PostToolUse":
         state["status"] = "processing"
         state["tool"] = data.get("tool_name")
-        state["tool_input"] = tool_input
         # Send tool_use_id so Swift can cancel the specific pending permission
         tool_use_id_from_event = data.get("tool_use_id")
         if tool_use_id_from_event:

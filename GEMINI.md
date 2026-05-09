@@ -18,8 +18,10 @@ The app monitors agents via a **Unix Domain Socket** at `/tmp/claude-island.sock
   - **Gemini:** `~/.gemini/hooks/gemini-island-bridge.js`
   - **Qwen:** `~/.qwen/hooks/qwen-island-state.py`
   - **Codex:** `~/.codex/hooks/codex-island-state.py`
+- **Codex Config:** Codex hooks are registered in `~/.codex/config.toml`, not `settings.json`. Only Codex-supported events should be installed: `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PermissionRequest`, `Stop`, and `SessionStart`. Hook review state uses `[hooks.state."<config.toml>:<event>:0:0"]` blocks with `enabled = true`; do not generate legacy `trusted_hash` state or Claude-only events such as `Notification`, `SessionEnd`, or `PreCompact` for Codex.
 - **Manual Integration:** Other agents can send JSON-encoded `HookEvent` objects to the socket. The event should include a `"provider"` field (`gemini`, `qwen`, `codex`, or `claude`) for proper branding.
 - **Permissions:** For `PermissionRequest`, the socket remains open until the app sends back a `HookResponse` (`allow` or `deny`).
+- **Socket Safety:** Hook scripts verify the socket belongs to the current user and is not group/world writable before sending events. Non-approval notifications use a short timeout; approval requests can block longer while waiting for a user decision.
 
 ### 2. Multi-Provider Modeling
 - **`AgentProvider`:** Enum defining supported agents (`.claude`, `.gemini`, `.qwen`, `.codex`, `.custom`) with their respective brand colors and icons.

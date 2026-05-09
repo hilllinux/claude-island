@@ -62,7 +62,7 @@ struct HookInstaller {
             try? FileManager.default.removeItem(at: pythonScript)
             try? FileManager.default.copyItem(at: bundled, to: pythonScript)
             try? FileManager.default.setAttributes(
-                [.posixPermissions: 0o755],
+                [.posixPermissions: 0o600],
                 ofItemAtPath: pythonScript.path
             )
         }
@@ -71,47 +71,33 @@ struct HookInstaller {
     }
 
     private static func updateCodexConfig(at configURL: URL, scriptPath: String) {
+        let scriptName = scriptPath.components(separatedBy: "/").last ?? "codex-island-state.py"
+        var contents = (try? String(contentsOf: configURL, encoding: .utf8)) ?? ""
         let python = detectPython()
         let command = "\(python) \(scriptPath) --provider codex"
-        
-        // Use a shell command to update the TOML file if the hook isn't already there
-        // This is safer than trying to parse TOML in Swift without a library
-        let scriptName = scriptPath.components(separatedBy: "/").last ?? "codex-island-state.py"
-        let checkCmd = "grep -q '\(scriptName)' \(configURL.path)"
-        
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", checkCmd]
-        try? process.run()
-        process.waitUntilExit()
-        
-        if process.terminationStatus != 0 {
-            // Hook not found, append it to [hooks] section
-            let appendCmd = """
-            if ! grep -q '^\\[hooks\\]' \(configURL.path); then
-                echo '\\n[hooks]' >> \(configURL.path)
-            fi
-            
-            # Add common hooks if not present
-            for event in UserPromptSubmit SessionStart Stop PreToolUse PostToolUse PermissionRequest Notification SessionEnd PreCompact; do
-                if ! grep -q "$event =" \(configURL.path); then
-                    if [ "$event" = "PreToolUse" ] || [ "$event" = "PostToolUse" ] || [ "$event" = "PermissionRequest" ]; then
-                        echo "$event = [{ matcher = \\"*\\", hooks = [{ type = \\"command\\", command = \\"\(command)\\" }] }]" >> \(configURL.path)
-                    elif [ "$event" = "PreCompact" ]; then
-                        echo "$event = [{ matcher = \\"auto\\", hooks = [{ type = \\"command\\", command = \\"\(command)\\" }] }, { matcher = \\"manual\\", hooks = [{ type = \\"command\\", command = \\"\(command)\\" }] }]" >> \(configURL.path)
-                    else
-                        echo "$event = [{ hooks = [{ type = \\"command\\", command = \\"\(command)\\" }] }]" >> \(configURL.path)
-                    fi
-                fi
-            done
-            """
-            
-            let appendProcess = Process()
-            appendProcess.executableURL = URL(fileURLWithPath: "/bin/sh")
-            appendProcess.arguments = ["-c", appendCmd]
-            try? appendProcess.run()
-            appendProcess.waitUntilExit()
+
+        contents = removeCodexHookEntries(from: contents, scriptName: scriptName)
+        if !contents.contains("[hooks]") {
+            contents = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+            contents += contents.isEmpty ? "[hooks]\n" : "\n\n[hooks]\n"
         }
+
+        let existingEvents = codexHookEvents(in: contents)
+        let hookConfigs = codexHookLines(command: command).filter { !existingEvents.contains($0.event) }
+        let hookLines = hookConfigs.map { $0.line }
+        contents = appendLines(hookLines, underSection: "hooks", in: contents)
+
+        let stateLines = codexHookStateLines(
+            configPath: configURL.path,
+            events: hookConfigs.map { $0.event }
+        )
+        if !contents.contains("[hooks.state]") {
+            contents = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+            contents += "\n\n[hooks.state]\n"
+        }
+        contents = appendLines(stateLines, underSection: "hooks.state", in: contents)
+
+        try? contents.write(to: configURL, atomically: true, encoding: .utf8)
     }
 
     private static func installPythonBasedHooks(agentName: String, configDir: String, provider: String) {
@@ -296,6 +282,161 @@ struct HookInstaller {
         }
     }
 
+    // MARK: - Codex TOML Helpers
+
+    private static func codexHookLines(command: String) -> [(event: String, line: String)] {
+        [
+            ("UserPromptSubmit", "UserPromptSubmit = [{ hooks = [{ type = \"command\", command = \"\(command)\" }] }]"),
+            ("PreToolUse", "PreToolUse = [{ matcher = \"*\", hooks = [{ type = \"command\", command = \"\(command)\" }] }]"),
+            ("PostToolUse", "PostToolUse = [{ matcher = \"*\", hooks = [{ type = \"command\", command = \"\(command)\" }] }]"),
+            ("PermissionRequest", "PermissionRequest = [{ matcher = \"*\", hooks = [{ type = \"command\", command = \"\(command)\", timeout = 300 }] }]"),
+            ("Stop", "Stop = [{ hooks = [{ type = \"command\", command = \"\(command)\" }] }]"),
+            ("SessionStart", "SessionStart = [{ hooks = [{ type = \"command\", command = \"\(command)\" }] }]"),
+        ]
+    }
+
+    private static func codexHookStateLines(configPath: String, events: [String]) -> [String] {
+        let eventLabels = [
+            "PermissionRequest": "permission_request",
+            "PostToolUse": "post_tool_use",
+            "PreToolUse": "pre_tool_use",
+            "SessionStart": "session_start",
+            "Stop": "stop",
+            "UserPromptSubmit": "user_prompt_submit",
+        ]
+
+        return events.compactMap { eventLabels[$0] }.flatMap { event in
+            [
+                "[hooks.state.\"\(configPath):\(event):0:0\"]",
+                "enabled = true",
+            ]
+        }
+    }
+
+    private static func codexHookEvents(in contents: String) -> Set<String> {
+        let supportedEvents = Set(codexHookLines(command: "").map { $0.event })
+        var events = Set<String>()
+        var inHooksSection = false
+
+        for line in contents.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed == "[hooks]" {
+                inHooksSection = true
+                continue
+            }
+            if inHooksSection && trimmed.hasPrefix("[") {
+                break
+            }
+            guard inHooksSection,
+                  let event = trimmed.components(separatedBy: "=").first?.trimmingCharacters(in: .whitespaces),
+                  supportedEvents.contains(event) else {
+                continue
+            }
+            events.insert(event)
+        }
+
+        return events
+    }
+
+    private static func removeCodexHookEntries(from contents: String, scriptName: String) -> String {
+        let stateKeyPrefix = "[hooks.state."
+        let supportedEvents = [
+            "UserPromptSubmit",
+            "PreToolUse",
+            "PostToolUse",
+            "PermissionRequest",
+            "Stop",
+            "SessionStart",
+        ]
+        let unsupportedEvents = [
+            "Notification",
+            "SubagentStop",
+            "SessionEnd",
+            "PreCompact",
+        ]
+        let codexStateLabels = [
+            ":permission_request:0:0",
+            ":post_tool_use:0:0",
+            ":pre_tool_use:0:0",
+            ":session_start:0:0",
+            ":stop:0:0",
+            ":user_prompt_submit:0:0",
+        ]
+
+        var output: [String] = []
+        var skippingStateBlock = false
+
+        for line in contents.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            if trimmed.hasPrefix(stateKeyPrefix) {
+                skippingStateBlock = codexStateLabels.contains { trimmed.contains($0) }
+                if skippingStateBlock {
+                    continue
+                }
+            } else if skippingStateBlock {
+                if trimmed.hasPrefix("[") {
+                    skippingStateBlock = false
+                } else {
+                    continue
+                }
+            }
+
+            let removesHookLine = (supportedEvents + unsupportedEvents).contains { event in
+                trimmed.hasPrefix("\(event) =") && trimmed.contains(scriptName)
+            }
+            if removesHookLine {
+                continue
+            }
+
+            output.append(line)
+        }
+
+        return output.joined(separator: "\n")
+    }
+
+    private static func appendLines(_ lines: [String], underSection section: String, in contents: String) -> String {
+        var output: [String] = []
+        var inserted = false
+        var inTargetSection = false
+
+        for line in contents.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            if trimmed == "[\(section)]" {
+                inTargetSection = true
+                output.append(line)
+                continue
+            }
+
+            if inTargetSection && trimmed.hasPrefix("[") {
+                output.append(contentsOf: lines)
+                output.append("")
+                inserted = true
+                inTargetSection = false
+            }
+
+            output.append(line)
+        }
+
+        if inTargetSection && !inserted {
+            if output.last?.isEmpty == false {
+                output.append("")
+            }
+            output.append(contentsOf: lines)
+            inserted = true
+        }
+
+        if !inserted {
+            if output.last?.isEmpty == false {
+                output.append("")
+            }
+            output.append(contentsOf: lines)
+        }
+
+        return output.joined(separator: "\n")
+    }
+
     // MARK: - Utils
 
     private static func detectPython() -> String {
@@ -328,7 +469,13 @@ struct HookInstaller {
 
     /// Check if Codex hooks are currently installed
     static func isCodexInstalled() -> Bool {
-        isPythonHookInstalled(configDir: ".codex", scriptName: "codex-island-state.py")
+        let agentDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".codex")
+        let config = agentDir.appendingPathComponent("config.toml")
+        guard let contents = try? String(contentsOf: config, encoding: .utf8) else {
+            return false
+        }
+        return contents.contains("codex-island-state.py")
     }
 
     private static func isPythonHookInstalled(configDir: String, scriptName: String) -> Bool {
@@ -405,7 +552,19 @@ struct HookInstaller {
     }
 
     private static func uninstallCodex() {
-        uninstallPythonHook(configDir: ".codex", scriptName: "codex-island-state.py")
+        let agentDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".codex")
+        let hooksDir = agentDir.appendingPathComponent("hooks")
+        let pythonScript = hooksDir.appendingPathComponent("codex-island-state.py")
+        let config = agentDir.appendingPathComponent("config.toml")
+
+        try? FileManager.default.removeItem(at: pythonScript)
+
+        guard let contents = try? String(contentsOf: config, encoding: .utf8) else {
+            return
+        }
+        let updated = removeCodexHookEntries(from: contents, scriptName: "codex-island-state.py")
+        try? updated.write(to: config, atomically: true, encoding: .utf8)
     }
 
     private static func uninstallPythonHook(configDir: String, scriptName: String) {

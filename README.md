@@ -42,6 +42,19 @@ Agent Island installs hooks into agent configuration directories (e.g., `~/.clau
 
 When an agent needs permission to run a tool, the notch expands with approve/deny buttons—no need to switch to the terminal.
 
+### Codex Hooks
+
+Codex integration uses `~/.codex/config.toml` and installs `~/.codex/hooks/codex-island-state.py`. Agent Island only registers Codex-supported hook events:
+
+- `UserPromptSubmit`
+- `PreToolUse`
+- `PostToolUse`
+- `PermissionRequest`
+- `Stop`
+- `SessionStart`
+
+The installer also writes Codex hook review state with `enabled = true` under `[hooks.state]`, which matches current Codex hook approval behavior and avoids repeated "hooks need review" prompts. Unsupported Claude-style events such as `Notification`, `SessionEnd`, and `PreCompact` are not registered for Codex.
+
 ## Analytics
 
 Agent Island uses Mixpanel to collect anonymous usage data:
@@ -50,6 +63,8 @@ Agent Island uses Mixpanel to collect anonymous usage data:
 - **Session Started** — When a new agent session is detected
 
 No personal data or conversation content is collected.
+
+Hook events are sent over a same-user Unix socket. Non-approval events use a short socket timeout and Codex tool lifecycle updates avoid sending full tool input payloads unless an approval decision is required.
 
 ## License
 
